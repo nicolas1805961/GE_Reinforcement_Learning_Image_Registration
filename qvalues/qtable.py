@@ -77,7 +77,7 @@ class Q:
 
 class Q_table:
 
-    def __init__(self, actions, gt_translations=None):
+    def __init__(self, actions, transformations=None):
         self.actions = actions
         self.actions_names = [action.name for action in actions]
 
@@ -85,28 +85,28 @@ class Q_table:
         self.table = torch.empty(self.shape)
         self.dataframe = pd.DataFrame(self.table, columns=self.actions_names)
 
-        if gt_translations is not None:
-            self.fit(gt_translations)
+        if transformations is not None:
+            self.fit(transformations)
 
     def __getitem__(self, index):
         return self.table[index]
 
-    def __str__():
+    def __str__(self):
         return self.table.__str__()
 
-    def fit(self, gt_translations, verbose=1):
-        progbar = tf.keras.utils.Progbar(len(gt_translations), verbose=verbose, interval=0.05, unit_name='transform')
+    def fit(self, transformations, verbose=1):
+        progbar = tf.keras.utils.Progbar(len(transformations), verbose=verbose, interval=0.05, unit_name='transform')
         if verbose > 0:
             print('Q Table')
 
-        if type(gt_translations) == np.ndarray:
-            gt_translations = torch.from_numpy(gt_translations)
+        if type(transformations) == np.ndarray:
+            transformations = torch.from_numpy(transformations)
 
-        self.shape = (len(gt_translations), len(self.actions))
+        self.shape = (len(transformations), len(self.actions))
         self.table = torch.zeros(self.shape)
 
-        for i, gt_translation in enumerate(gt_translations):
-            self.table[i] = Q(self.actions, gt_translation).values()
+        for i, transformation in enumerate(transformations):
+            self.table[i] = Q(self.actions, transformation).values()
             progbar.update(i + 1)
 
         self.dataframe = pd.DataFrame(self.table, columns=self.dataframe.columns)
