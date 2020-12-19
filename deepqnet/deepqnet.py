@@ -11,12 +11,16 @@ def accuracy(y_true, y_pred):
 
 
 def choicem(y_true, y_pred):
-    max_pred = y_pred == torch.max(y_pred, dim=1, keepdims=True)
-    max_true = y_true == torch.max(y_true, dim=1, keepdims=True)
+    max_pred = torch.eq(y_pred, torch.max(y_pred, dim=1, keepdims=True).values)
+    max_true = torch.eq(y_true, torch.max(y_true, dim=1, keepdims=True).values)
 
     diff = max_true.type(torch.int8) - max_pred.type(torch.int8)
 
-    return torch.ge(diff, 0).all(dim=1)
+    print(torch.ge(diff, 0).all(dim=1))
+    print(torch.ge(diff, 0).all(dim=1).shape)
+
+    # return torch.ge(diff, 0).all(dim=1) / y_pred.size(0)
+    return 0
 
 
 class DQN(nn.Module):
@@ -85,8 +89,8 @@ class DQN(nn.Module):
         running_loss = 0.0
 
         for epoch in range(epochs):
-            loss = 0.0
-            correct = 0
+            acc = 0.0
+            choice = 0.0
 
             for index, batch in enumerate(generator):
                 x = batch[0].to(self.device)
@@ -101,14 +105,13 @@ class DQN(nn.Module):
                 optimizer.step()
 
                 running_loss += loss.item()
-                correct += accuracy(q, pred)
+                acc += accuracy(q, pred)
+                choice += choicem(q, pred)
 
-
-            acc = correct / (index + 1)
+            acc /= (index + 1)
+            choice /= (index + 1)
             loss = running_loss / ((index + 1) * (epoch + 1))
-            print(f'Epoch {epoch + 1}: loss {loss} accuracy {acc}')
-
-        return self
+            print(f'Epoch {epoch + 1}: loss {loss} accuracy {acc} choice {choice}')
 
     def summary(self):
         torchsummary.summary(self, self.input_size)
