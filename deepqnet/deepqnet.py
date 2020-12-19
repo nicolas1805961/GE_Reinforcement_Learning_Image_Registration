@@ -94,12 +94,15 @@ class DQN(nn.Module):
 
                 pred = self.__call__(x.float()).to(self.device)
 
-                running_loss += criterion(pred, q)
-                correct += accuracy(q, pred)
+                loss = criterion(pred, q)
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+
+                running_loss += loss.item()
+                correct += accuracy(q, pred)
+
 
             acc = correct / (index + 1)
             loss = running_loss / ((index + 1) * (epoch + 1))
