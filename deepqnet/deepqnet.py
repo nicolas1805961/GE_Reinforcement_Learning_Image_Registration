@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -115,3 +117,13 @@ class DQN(nn.Module):
 
     def summary(self):
         torchsummary.summary(self, self.input_size)
+
+    def load(self, filepath):
+        self.load_state_dict(torch.load(filepath, map_location=torch.device('cpu')))
+        self.eval()
+
+    def save(self, filepath='dqn.pt', dirpath=None):
+        if dirpath is not None:
+            filepath = os.path.join(dirpath, filepath)
+        torch.save(self.state_dict(), filepath)
+
