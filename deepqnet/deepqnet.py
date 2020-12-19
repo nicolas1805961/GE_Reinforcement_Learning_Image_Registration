@@ -89,13 +89,8 @@ class DQN(nn.Module):
             correct = 0
 
             for index, batch in enumerate(generator):
-
-                # FIXME: remove
-                print(len(batch))
-                assert(len(batch) == 6)
-
                 x = batch[0].to(self.device)
-                q = batch[1].to(self.device)
+                q = batch[2].to(self.device)
 
                 pred = self.__call__(x.float()).to(self.device)
 
