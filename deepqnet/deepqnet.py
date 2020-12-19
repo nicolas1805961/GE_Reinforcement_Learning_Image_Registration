@@ -18,20 +18,15 @@ def choicem(y_true, y_pred):
 
     diff = max_true.type(torch.int8) - max_pred.type(torch.int8)
 
-    print(torch.ge(diff, 0).all(dim=1))
-    print(torch.ge(diff, 0).all(dim=1).shape)
-
-    # return torch.ge(diff, 0).all(dim=1) / y_pred.size(0)
-    return 0
+    return torch.sum(torch.ge(diff, 0).all(dim=1)) / y_pred.size(0)
 
 
 class DQN(nn.Module):
 
-    def __init__(self, depth, height, width, outputs, device='cuda'):
+    def __init__(self, depth, height, width, outputs, device):
         super(DQN, self).__init__()
 
         self.input_size = (depth, height, width)
-
         self.device = device
 
         self.conv1 = nn.Conv2d(1, 8, kernel_size=3)
@@ -69,7 +64,7 @@ class DQN(nn.Module):
 
         self.linear_input_size = linear_input_size
 
-        self.to(device=device)
+        self.to(device=self.device)
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
@@ -91,8 +86,9 @@ class DQN(nn.Module):
         running_loss = 0.0
 
         for epoch in range(epochs):
-            acc = 0.0
-            choice = 0.0
+
+            index = 0
+            acc, choice = 0.0, 0.0
 
             for index, batch in enumerate(generator):
                 x = batch[0].to(self.device)
@@ -110,16 +106,18 @@ class DQN(nn.Module):
                 acc += accuracy(q, pred)
                 choice += choicem(q, pred)
 
-            acc /= (index + 1)
-            choice /= (index + 1)
+            acc, choice = acc / (index + 1), choice / (index + 1)
             loss = running_loss / ((index + 1) * (epoch + 1))
             print(f'Epoch {epoch + 1}: loss {loss} accuracy {acc} choice {choice}')
+
+    def predict(self, x):
+        return self.__call__(x.float().to(self.device))
 
     def summary(self):
         torchsummary.summary(self, self.input_size)
 
     def load(self, filepath):
-        self.load_state_dict(torch.load(filepath, map_location=torch.device('cpu')))
+        self.load_state_dict(torch.load(filepath, map_location=self.device))
         self.eval()
 
     def save(self, filepath='dqn.pt', dirpath=None):
