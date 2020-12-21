@@ -53,7 +53,7 @@ class TestDQNDataset(RegisterDQNDataset):
         self.transformations = transformations
 
     def __getitem__(self, key):
-        return super().__getitem__(key) + (self.full_images[key], self.transformations[key],)
+        return super().__getitem__(key) + (self.transformations[key],)
 
 
 class DQNDataLoader(DataLoader):
