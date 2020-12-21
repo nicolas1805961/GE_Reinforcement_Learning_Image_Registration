@@ -65,5 +65,5 @@ class RegistrationAgent:
     def load(self, filepath):
         self.dqn.load(filepath=filepath)
 
-    def save(self, filepath=None, dirpath=None):
-        self.dqn.save(filepath, dirpath)
+    def save(self, **kwargs):
+        self.dqn.save(**kwargs)
