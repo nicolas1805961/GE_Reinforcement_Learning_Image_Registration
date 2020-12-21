@@ -1,32 +1,61 @@
 from torch.utils.data import Dataset, DataLoader
 
 
-class QNetDataset(Dataset):
+class DQNDataset(Dataset):
 
-    def __init__(self, X, Y, Q, first_images, big_images, centers):
-        self.X = X
-        self.Y = Y
-        self.Q = Q
-        self.first_images = first_images
-        self.big_images = big_images
-        self.centers = centers
+    def __init__(self, reference_images, floating_images):
+        assert(len(reference_images) == len(floating_images))
+
+        self.reference_images = reference_images
+        self.floating_images = floating_images
 
     def __len__(self):
-        return len(self.X)
+        return len(self.reference_images)
 
-    def __getitem__(self, index):
-        X = self.X[index]
-        Y = self.Y[index]
-        Q = self.Q[index]
-        first_image = self.first_images[index]
-        big_image = self.big_images[index]
-        center = self.centers[index]
-
-        return X, Y, Q, first_image, big_image, center
+    def __getitem__(self, key):
+        return self.reference_images[key], self.floating_images[key]
 
 
-class QNetDataLoader(DataLoader):
+class TrainDQNDataset(DQNDataset):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, reference_images, floating_images, qvalues):
+        super().__init__(reference_images, floating_images)
+        assert(len(reference_images) == len(qvalues))
+
+        self.qvalues = qvalues
+
+    def __getitem__(self, key):
+        return super().__getitem__(key) + (self.qvalues[key],)
+
+
+class RegisterDQNDataset(DQNDataset):
+
+    def __init__(self, reference_images, floating_images, full_images, centers):
+        super().__init__(reference_images, floating_images)
+        assert(len(reference_images) == len(full_images))
+        assert(len(reference_images) == len(centers))
+
+        self.full_images = full_images
+        self.centers = centers
+
+    def __getitem__(self, key):
+        return super().__getitem__(key), self.full_images[key] + (self.centers[key], )
+
+
+class TestDQNDataset(RegisterDQNDataset):
+
+    def __init__(self, reference_images, floating_images, full_images, centers, transformations):
+        super().__init__(reference_images, floating_images, full_images, centers)
+        assert(len(reference_images) == len(transformations))
+
+        self.transformations = transformations
+
+    def __getitem__(self, key):
+        return super().__getitem__(key), self.full_images[key] + (self.transformations[key],)
+
+
+class DQNDataLoader(DataLoader):
+
+    def __init__(self, dataset: DQNDataset, *args, **kwargs):
+        super().__init__(dataset=dataset, *args, **kwargs)
 

@@ -1,27 +1,10 @@
-import cv2
 import torch
 
 import numpy as np
 
-from torch.utils.data import Dataset, DataLoader
-
-
-from datasets.dataset import QNetDataset
 from deepqnet.deepqnet import DQN
-
 from qvalues.qtable import Action
-
-
-def rotate_image(image, angle, image_center):
-    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-    #result = cv2.warpAffine(image, rot_mat, image.shape[::-1], flags=cv2.INTER_LINEAR)
-    result = cv2.warpAffine(image, rot_mat, image.shape[::-1])
-    return result
-
-def get_new_image(big_image_rotated, transform, center):
-  big_image_before = rotate_image(big_image_rotated, transform[0], center)
-  patch2_test = big_image_before[center[0] - 75 + transform[2]:center[0] + 75 + transform[2], center[1] - 75 + transform[1]:center[1] + 75 + transform[1]]
-  return patch2_test
+from utils import get_new_image, rotate_image
 
 
 class RegistrationAgent:
@@ -50,10 +33,14 @@ class RegistrationAgent:
     """
 
     def register(self, generator, iterations=100):
-        T_ts = []
+        assert(generator.batch_size == 1)
+
+        samples = len(generator.dataset)
+        T_ts = np.zeros((samples, 3))
 
         with torch.no_grad():
-            for x, y, q, first_image, big_image, center in generator:
+
+            for i, x, y, q, first_image, big_image, center in enumerate(generator):
                 T_t = torch.zeros((3,), dtype=torch.int16)
 
                 for iteration in range(iterations):
@@ -69,6 +56,8 @@ class RegistrationAgent:
                     current_image = get_new_image(big_image, T_t, (center[0, 0].item(), center[0, 1].item()))
                     diff = first_image - current_image
                     x = diff.view(1, 1, 150, 150)
+
+        return T_ts
 
     def load(self, filepath):
         self.dqn.load(filepath=filepath)
