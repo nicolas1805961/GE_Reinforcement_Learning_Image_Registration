@@ -90,28 +90,27 @@ class DQN(nn.Module):
             index = 0
             acc, choice = 0.0, 0.0
 
-            for index, batch in enumerate(generator):
-                x = batch[0].to(self.device)
-                q = batch[2].to(self.device)
+            for index, (reference_images, floating_images, qvalues) in enumerate(generator):
+                diff_images = (reference_images - floating_images).float().to(self.device)
+                qvalues = qvalues.to(self.device)
 
-                pred = self.__call__(x.float()).to(self.device)
-
-                loss = criterion(pred, q)
+                predictions = self.__call__(diff_images).to(self.device)
+                loss = criterion(predictions, qvalues)
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
                 running_loss += loss.item()
-                acc += accuracy(q, pred)
-                choice += choicem(q, pred)
+                acc += accuracy(qvalues, predictions)
+                choice += choicem(qvalues, predictions)
 
             acc, choice = acc / (index + 1), choice / (index + 1)
             loss = running_loss / ((index + 1) * (epoch + 1))
             print(f'Epoch {epoch + 1}: loss {loss} accuracy {acc} choice {choice}')
 
     def predict(self, x):
-        return self.__call__(x.float().to(self.device))
+        return self.__call__(x.view(1, *self.input_size).float().to(self.device))
 
     def summary(self):
         torchsummary.summary(self, self.input_size)
@@ -124,4 +123,3 @@ class DQN(nn.Module):
         if dirpath is not None:
             filepath = os.path.join(dirpath, filepath)
         torch.save(self.state_dict(), filepath)
-

@@ -36,16 +36,17 @@ class RegistrationAgent:
         assert(generator.batch_size == 1)
 
         samples = len(generator.dataset)
-        T_ts = np.zeros((samples, 3))
+        T_ts = np.zeros((samples, 3), dtype=np.int32)
 
         with torch.no_grad():
 
-            for i, x, y, q, first_image, big_image, center in enumerate(generator):
-                T_t = torch.zeros((3,), dtype=torch.int16)
+            for i, (reference_image, floating_image, full_image, center) in enumerate(generator):
+                T_t = torch.zeros((3,), dtype=torch.int32)
+                current_image = floating_image
 
                 for iteration in range(iterations):
-                    prediction = self.dqn.predict(x)
-
+                    diff_image = reference_image - current_image
+                    prediction = self.dqn.predict(diff_image)
                     action = self.actions[np.argmax(prediction, axis=1)].item()
                     T_t = action.apply(T_t)
 
@@ -53,9 +54,11 @@ class RegistrationAgent:
                     translation = torch.index_select(T_t[1:], 0, inv_idx).reshape(1, 2)
                     if torch.max(center + translation) + 75 == 511 or torch.min(center + translation) - 75 == 0:
                         break
-                    current_image = get_new_image(big_image, T_t, (center[0, 0].item(), center[0, 1].item()))
-                    diff = first_image - current_image
-                    x = diff.view(1, 1, 150, 150)
+
+                    print(center)
+                    current_image = get_new_image(full_image, T_t, (center[0, 0].item(), center[0, 1].item()))
+
+                T_ts[i] = T_t
 
         return T_ts
 
