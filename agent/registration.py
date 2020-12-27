@@ -1,21 +1,28 @@
 import torch
 
+import ipywidgets as widgets
 import numpy as np
+
+from IPython.display import display
+from ipywidgets import interact, interactive, fixed
+
 
 from datasets.dataset import DQNDataLoader, RegisterDQNDataset
 from deepqnet.deepqnet import DQN
 from qvalues.qtable import Action
-from utils import get_new_image, rotate_image
+from utils import get_new_image, rotate_image, visualize_registration
 
 
 class RegistrationAgent:
     actions = Action.values()
 
     def __init__(self, depth, height, width, device):
+        self.visualize_registration = False
         self.dqn = DQN(depth, height, width, outputs=len(self.actions), device=device)
 
     def evaluate(self, generator):
         assert(generator.batch_size == 1)
+        self.visualize_registration = False
 
         samples = len(generator.dataset)
 
@@ -61,15 +68,19 @@ class RegistrationAgent:
 
             for i, (reference_image, floating_image, full_image, center) in enumerate(generator):
                 T_t = torch.zeros((3,), dtype=torch.int32)
+                visualization_transformations = [T_t.numpy()]
 
                 full_image = torch.squeeze(full_image).numpy()
                 current_image = floating_image
 
                 for iteration in range(iterations):
                     diff_image = reference_image - current_image
+
                     prediction = self.dqn.predict(diff_image)
                     action = self.actions[torch.argmax(prediction, dim=1)]
+
                     T_t = action.apply(T_t)
+                    visualization_transformations.append(T_t)
 
                     inv_idx = torch.arange(1, -1, -1).long()
                     translation = torch.index_select(T_t[1:], 0, inv_idx).reshape(1, 2)
@@ -80,7 +91,25 @@ class RegistrationAgent:
 
                 T_ts[i] = T_t
 
+                if self.visualize_registration:
+                    visualization_reference_image = torch.squeeze(reference_image).numpy()
+                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item())) for transformation in visualization_transformations]
+
+                    max_step = len(visualization_floating_images) - 1
+                    step = widgets.IntSlider(value=0, min=0, max=max_step, step=1, description='Registration step')
+                    interact(
+                        visualize_registration,
+                        reference_image=fixed(visualization_reference_image),
+                        floating_images=fixed(visualization_floating_images),
+                        step=step
+                    )
+
         return T_ts
+
+    def visualize(self, generator, **kwargs):
+        self.visualize_registration = True
+        self.register(generator, **kwargs)
+        self.visualize_registration = False
 
     def load(self, filepath):
         self.dqn.load(filepath=filepath)
