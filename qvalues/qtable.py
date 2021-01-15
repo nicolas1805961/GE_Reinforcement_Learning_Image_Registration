@@ -115,5 +115,11 @@ class Q_table:
 
     def save(self, filepath='qvalues.pt', dirpath=None):
         if dirpath is not None:
+            if not os.path.exists(dirpath):
+                os.makedirs(dirpath)
+
+            if not os.path.isdir(dirpath):
+                raise NotADirectoryError
+
             filepath = os.path.join(dirpath, filepath)
         torch.save(self.table, filepath)
