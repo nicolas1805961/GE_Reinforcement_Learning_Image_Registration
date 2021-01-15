@@ -13,7 +13,7 @@ Nicolas Portal <nicolas.portal@epita.fr>\
 Raphaël Dias--Monteiro <raphael.dias-monteiro@epita.fr>
 
 ###### GE Healthcare supervisors
-Maxime Taron <maxime.taron@ge.com>
+Maxime Taron <maxime.taron@ge.com>\
 Thomas Benseghir <thomas.benseghir@ge.com>
 
 
@@ -93,3 +93,9 @@ to visualize registration steps.
 The different notebooks do exactly what their names are.
 
 ## Pipeline
+
+![](doc/pipeline.png)
+
+## Setting up and running
+
+TODO
