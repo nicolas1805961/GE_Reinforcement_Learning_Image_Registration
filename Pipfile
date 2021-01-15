@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+jupyter = "*"
+matplotlib = "*"
+numpy = "*"
+pandas = "*"
+scikit-image = "*"
+scikit-learn = "*"
+tensorflow = "*"
+torch = "*"
+torch-summary = "*"
+torchvision = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
