@@ -17,9 +17,11 @@ volume) is extracted from Vision application.
 import argparse
 import astra
 import numpy as np
+import os
 import pydicom
 import time
-import os
+
+from imageio import get_writer
 
 #%%
 
@@ -310,6 +312,25 @@ def displaySequence(seq, vmin = None, vmax = None):
     plt.show()  # Show figure
 
 
+def save_imgs(imgs, path, name):
+    """
+    @imgs : array containing images (shape : (nb_imgs, h, w))
+    @path : folder location to save images
+    @name : prefix name for images : name001.png
+    """
+    if not os.path.isdir(path):
+        os.mkdir(path)
+    print(f"Saving to {path} :")
+    i = 0
+    for img in imgs:
+        strNum = str(i).zfill(4)  # Add 0 padding
+        filename = f"{path}/{name}{strNum}.png"
+        print(f"Saving {filename}...", end='\r', flush=True)
+        with get_writer(filename) as writer:
+            writer.append_data(img, {'compress': 9})
+        i += 1
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate projections from DICOM files.')
     parser.add_argument("folder", type=str, help="Location of folder storing your DICOM files.")
@@ -319,10 +340,13 @@ def parse_args():
 def main():
     # Parse arguments
     path = parse_args().folder
+    if path[-1] == "/":
+        path = path[:-1]
 
     # Display axial
     vol, vox_sizes_mm, imageOrigin = load_from_dicom_folder(path)
-    projViewer = displaySequence(vol)
+    # projViewer = displaySequence(vol)
+    save_imgs(vol, path + "_axial", "axial")
 
     # Next : create and display projections
 
@@ -400,7 +424,8 @@ def main():
     projImg2 = np.asarray([proj*(512/avg) for proj, avg in zip(projImg1, avgList)])
     # projImg2 = np.max(projImg2,axis=(1,2),keepdims=True) - projImg2
 
-    projViewer = displaySequence(np.log(projImg2))
+    # projViewer = displaySequence(np.log(projImg2))
+    save_imgs(np.log(projImg2), path + "_proj", "proj")
 
 
 if __name__ == "__main__":
