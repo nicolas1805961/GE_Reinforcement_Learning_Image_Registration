@@ -14,6 +14,7 @@ volume) is extracted from Vision application.
 @author: 100042937
 """
 
+import argparse
 import astra
 import numpy as np
 import pydicom
@@ -309,61 +310,65 @@ def displaySequence(seq, vmin = None, vmax = None):
     plt.show()  # Show figure
 
 
-#%%
-
-PATH = "./ABD_LYMPH_010"
-
-vol, vox_sizes_mm, imageOrigin = load_from_dicom_folder(PATH)
-projViewer = displaySequence(vol)
-
-#%%
-
-# select center of the projection, in voxels with order Z (slice), Y, X
-pos = (58, 350, 256)
-
-#%% Make the volume isotropic
-t1 = time.time()
-ct_isotropic = make_isotropic(vol,vox_sizes_mm,order_of_interpolation=1)
-pos_iso = [pos[0]*vox_sizes_mm[2]/vox_sizes_mm[0], pos[1], pos[2]]
-vox_size_iso_mm = vox_sizes_mm[0]
-t2 = time.time()
-print("Shape of interpolated CT :", ct_isotropic.shape)
-print(f"Time for interpolation : {t2-t1:.3f}s")
-
-#%% Make the volume isotropic
-
-LaoRaolist, CraCaulist = [
-        x.flatten() for x in np.meshgrid(np.arange(-90,91,15),
-        np.arange(-30,31,15))
-]
-Llist = np.zeros(len(CraCaulist))
-SIDlist = np.random.randint(1000,1195,len(CraCaulist))
-FOVlist = [400]*len(CraCaulist)
-imgSize = 1000
-SOD = 820
-
-# tdir is expressed in Xray coordinates system, in mm to the right. in image
-# domain, unit is pixel and origin located at image center.
-tdirList = [
-        computeCameramWithPCangles(
-            Pdeg,
-            Cdeg,
-            SOD,
-            SID,
-            FOV/imgSize,
-            Ldeg
-        ) for ((
-            Ldeg,
-            Pdeg,
-            Cdeg,
-            SID,
-            FOV
-        )) in zip(Llist, LaoRaolist, CraCaulist,SIDlist,FOVlist)
-]
+def parse_args():
+    parser = argparse.ArgumentParser(description='Generate projections from DICOM files.')
+    parser.add_argument("folder", type=str, help="Location of folder storing your DICOM files.")
+    return parser.parse_args()
 
 
 def main():
-    #%% Generate the geometry needed by astra
+    # Parse arguments
+    path = parse_args().folder
+
+    # Display axial
+    vol, vox_sizes_mm, imageOrigin = load_from_dicom_folder(path)
+    projViewer = displaySequence(vol)
+
+    # Next : create and display projections
+
+    # Select center of the projection, in voxels with order Z (slice), Y, X
+    pos = (58, 350, 256)
+
+    # Make the volume isotropic
+    t1 = time.time()
+    ct_isotropic = make_isotropic(vol,vox_sizes_mm,order_of_interpolation=1)
+    pos_iso = [pos[0]*vox_sizes_mm[2]/vox_sizes_mm[0], pos[1], pos[2]]
+    vox_size_iso_mm = vox_sizes_mm[0]
+    t2 = time.time()
+    print("Shape of interpolated CT :", ct_isotropic.shape)
+    print(f"Time for interpolation : {t2-t1:.3f}s")
+
+    # Make the volume isotropic
+    LaoRaolist, CraCaulist = [
+            x.flatten() for x in np.meshgrid(np.arange(-90,91,15),
+            np.arange(-30,31,15))
+    ]
+    Llist = np.zeros(len(CraCaulist))
+    SIDlist = np.random.randint(1000,1195,len(CraCaulist))
+    FOVlist = [400]*len(CraCaulist)
+    imgSize = 1000
+    SOD = 820
+
+    # tdir is expressed in Xray coordinates system, in mm to the right. in image
+    # domain, unit is pixel and origin located at image center.
+    tdirList = [
+            computeCameramWithPCangles(
+                Pdeg,
+                Cdeg,
+                SOD,
+                SID,
+                FOV/imgSize,
+                Ldeg
+            ) for ((
+                Ldeg,
+                Pdeg,
+                Cdeg,
+                SID,
+                FOV
+            )) in zip(Llist, LaoRaolist, CraCaulist,SIDlist,FOVlist)
+    ]
+
+    # Generate the geometry needed by astra
     v = generate_camera_vector(
             pos_iso, [vox_size_iso_mm] * 3,
             ct_isotropic.shape,tdirList,
@@ -371,7 +376,7 @@ def main():
             1
     )
 
-    #%% Astra part, declare the volume and projection geometries, generate the spin
+    # Astra part, declare the volume and projection geometries, generate the spin
     # For 3D volume geometry, parameter order: rows, colums, slices (y, x, z)
     # NB : astra works with size 1 isotropic voxels
     nz,ny,nx = ct_isotropic.shape
@@ -381,11 +386,10 @@ def main():
     proj_id_ctiso, proj_data_ctiso = astra.create_sino3d_gpu(
             ct_isotropic, proj_geom_ctiso, vol_geom_ctiso
     )
-    #proj_data_ctiso*=vox_sizes_mm[0]/vox_cbct_mm
+    # proj_data_ctiso*=vox_sizes_mm[0]/vox_cbct_mm
     t2 = time.time()
     print(f"time for generating {proj_data_ctiso.shape[1]} views = {t1-t1:.2f}s")
 
-    #%%
     projImg = proj_data_ctiso.transpose(1,0,2)
     I0 = 1
     mu = 1.837e-2 # (mm-1) for water at 80kV
