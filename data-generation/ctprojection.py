@@ -22,60 +22,6 @@ import os
 
 #%%
 
-# def load_from_dicom_folder(address_case):
-#     """
-#     Load a volume and the voxel sizes from a folder containing the dicom files
-#     of the reformatted slices.\n
-# 
-#     Parameters
-#     ----------
-#     address_case : str
-#         Full path to the folder
-#     Returns
-#     ----------
-#     vol : numpy.array
-#         the loaded volume
-#     l : list of floats
-#         the voxel size in in mm in x,y,z
-#     2 : list of floats
-#         position of the center of first voxel of the volume
-#     """
-# 
-#     # TODO : Adapt those 3 lines to your case.
-#     files = os.listdir(address_case)
-#     files = [f for f in files if f[-4:] == ".dcm"]
-#     files = sorted(files, key = lambda x: int(x[2:5]))
-# 
-#     assert(len(files) > 0, f"no CTDC files found in directory {address_case}")
-# 
-#     imgList = []
-#     for f in files:
-#         im = pydicom.read_file(address_case+"/"+f)
-#         imgList.append((im.ImagePositionPatient[2], im))
-#     imgList = sorted(imgList)
-# 
-#     vol = np.array(
-#             [imdcm.pixel_array for _, imdcm in imgList],
-#             dtype = imgList[0][1].pixel_array.dtype
-#     )
-#     vol[vol==-2000] = 0
-# 
-#     im0 = imgList[0][1]
-#     print(im0)
-#     pix_ct = list(map(float, im0.PixelSpacing))
-#     try:
-#         slice_ct = abs(im0.SpacingBetweenSlices.real)
-#     except:
-#         print("SpacingBetweenSlices not found. use SliceThickness instead")
-#         slice_ct = abs(im0.SliceThickness.real)
-#     imageOrigin = im0.ImagePositionPatient
-#     vox_sizes = pix_ct + [slice_ct]
-#     print("Volume shape is {}".format(vol.shape))
-#     print("Voxel size is {}".format(vox_sizes))
-#     print("Volume origin is {}".format(imageOrigin))
-# #    ratio_ct=slice_ct/pix_ct
-#     return vol,vox_sizes, imageOrigin
-
 def load_from_dicom_folder(address_case):
     """
     Load a volume and the voxel sizes from a folder containing the dicom files
@@ -95,8 +41,6 @@ def load_from_dicom_folder(address_case):
     """
 
     files = os.listdir(address_case)
-    #files = [f for f in files if "CTDC" in f]
-    #files = sorted(files, key = lambda x: int(x.split(".")[-1]))
     imgList = []
     for f in files:
         try:
@@ -104,23 +48,24 @@ def load_from_dicom_folder(address_case):
             imgList.append((im.ImagePositionPatient[2], im))
         except pydicom.errors.InvalidDicomError:
             pass
-    # sort slices in ascending order of im.ImagePositionPatient[2]
+
+    # Sort slices in ascending order of im.ImagePositionPatient[2]
     imgList = sorted(imgList)
 
-    #create 3D volume in this order
+    # Create 3D volume in this order
     vol = np.array([imdcm.pixel_array for _, imdcm in imgList], dtype = im.pixel_array.dtype)
     vol[vol==-2000]=0
 
-    #compute interslice distance.
-     # do not use SpacingBetweenSlices dicom tag that is seldom present,
-     # neither SliceThickness that may be different from slice spacing
+    # Compute interslice distance
+    # Do not use SpacingBetweenSlices dicom tag that is seldom present,
+    # neither SliceThickness that may be different from slice spacing
     slicePositions = np.array([pos for pos, _ in imgList])
     spacingBetweenSlices = slicePositions[1:] - slicePositions[:-1]
     if len(np.unique(np.round(spacingBetweenSlices,2))) > 1:
         print('WARNING interslice distance is not constant : ', np.unique(spacingBetweenSlices))
     slice_ct = np.median(spacingBetweenSlices)
 
-    #use first image to get volume imageOrigin - ie the one that has the lowest z position
+    # Use first image to get volume imageOrigin - ie the one that has the lowest z position
     im0 = imgList[0][1]
     pix_ct = list(map(float, im0.PixelSpacing))
     vox_sizes = pix_ct + [slice_ct]
@@ -128,7 +73,7 @@ def load_from_dicom_folder(address_case):
     print("Volume shape is {}".format(vol.shape))
     print("Voxel size is {}".format(vox_sizes))
     print("Volume origin is {}".format(imageOrigin))
-#    ratio_ct=slice_ct/pix_ct
+    # ratio_ct=slice_ct/pix_ct
     return vol,vox_sizes, imageOrigin
 
 
@@ -167,7 +112,6 @@ def make_isotropic(
     return zoom(vol,ratio_ct,order=order_of_interpolation)
 
 
-
 def computeCamToXrayRotWithPCangles(Pdeg, Cdeg, Ldeg=0):
     """
         returns the rotation from Camera CS (ie rotated with P, C) toXray CS.
@@ -187,6 +131,7 @@ def computeCamToXrayRotWithPCangles(Pdeg, Cdeg, Ldeg=0):
     RC = np.array([[cC, 0, sC],[0,1,0], [-sC, 0, cC]])
     RL = np.array([[1, 0, 0],[0,cL,-sL], [0, sL, cL]])
     return np.linalg.multi_dot((RL,RP,RC));
+
 
 def computeCameramWithPCangles(Pdeg, Cdeg, SOD, SID, pixSize, Ldeg=0):
     """
@@ -237,6 +182,7 @@ def decomposeCameraFSdetector2(tdir, pixSize):
     U = invtdir3[:,0] * normFactor
     V = invtdir3[:,1] * normFactor
     return(opticalCenter, detOrigin, U, V)
+
 
 def generate_camera_vector(
         pos,
@@ -300,7 +246,6 @@ def generate_camera_vector(
         np.concatenate(decomposeCameraFSdetector2(p, 1.0)) for p in proj_mat_ct
     ])
     return v
-
 
 
 import matplotlib.pyplot as plt
@@ -367,7 +312,6 @@ def displaySequence(seq, vmin = None, vmax = None):
 #%%
 
 PATH = "./ABD_LYMPH_010"
-# PATH = "/home/pypaut/Documents/pfee/ACRIN01"
 
 vol, vox_sizes_mm, imageOrigin = load_from_dicom_folder(PATH)
 projViewer = displaySequence(vol)
@@ -418,38 +362,42 @@ tdirList = [
 ]
 
 
-#%% generate the geometry needed by astra
-v = generate_camera_vector(
-        pos_iso, [vox_size_iso_mm] * 3,
-        ct_isotropic.shape,tdirList,
-        1,
-        1
-)
+def main():
+    #%% Generate the geometry needed by astra
+    v = generate_camera_vector(
+            pos_iso, [vox_size_iso_mm] * 3,
+            ct_isotropic.shape,tdirList,
+            1,
+            1
+    )
 
-#%% astra part, declare the volume and projection geometries, generate the spin
-# For 3D volume geometry, parameter order: rows, colums, slices (y, x, z)
-# NB : astra works with size 1 isotropic voxels
-nz,ny,nx = ct_isotropic.shape
-vol_geom_ctiso = astra.create_vol_geom(ny, nx, nz)
-proj_geom_ctiso = astra.create_proj_geom('cone_vec',imgSize,imgSize,v)
-t1 = time.time()
-proj_id_ctiso, proj_data_ctiso = astra.create_sino3d_gpu(
-        ct_isotropic, proj_geom_ctiso, vol_geom_ctiso
-)
-#proj_data_ctiso*=vox_sizes_mm[0]/vox_cbct_mm
-t2 = time.time()
-print(f"time for generating {proj_data_ctiso.shape[1]} views = {t1-t1:.2f}s")
+    #%% Astra part, declare the volume and projection geometries, generate the spin
+    # For 3D volume geometry, parameter order: rows, colums, slices (y, x, z)
+    # NB : astra works with size 1 isotropic voxels
+    nz,ny,nx = ct_isotropic.shape
+    vol_geom_ctiso = astra.create_vol_geom(ny, nx, nz)
+    proj_geom_ctiso = astra.create_proj_geom('cone_vec',imgSize,imgSize,v)
+    t1 = time.time()
+    proj_id_ctiso, proj_data_ctiso = astra.create_sino3d_gpu(
+            ct_isotropic, proj_geom_ctiso, vol_geom_ctiso
+    )
+    #proj_data_ctiso*=vox_sizes_mm[0]/vox_cbct_mm
+    t2 = time.time()
+    print(f"time for generating {proj_data_ctiso.shape[1]} views = {t1-t1:.2f}s")
 
-#%%
-projImg = proj_data_ctiso.transpose(1,0,2)
-I0 = 1
-mu = 1.837e-2 # (mm-1) for water at 80kV
-projImg1 = I0*np.exp((-mu*vox_size_iso_mm/1000.0)*projImg)
+    #%%
+    projImg = proj_data_ctiso.transpose(1,0,2)
+    I0 = 1
+    mu = 1.837e-2 # (mm-1) for water at 80kV
+    projImg1 = I0*np.exp((-mu*vox_size_iso_mm/1000.0)*projImg)
 
-#rescaling . average of the center part of image at 512
-avgList = np.average(projImg1[:,250:-250,250:-250], axis=(1,2))
-projImg2 = np.asarray([proj*(512/avg) for proj, avg in zip(projImg1, avgList)])
+    # Rescaling . average of the center part of image at 512
+    avgList = np.average(projImg1[:,250:-250,250:-250], axis=(1,2))
+    projImg2 = np.asarray([proj*(512/avg) for proj, avg in zip(projImg1, avgList)])
+    # projImg2 = np.max(projImg2,axis=(1,2),keepdims=True) - projImg2
 
-#projImg2 = np.max(projImg2,axis=(1,2),keepdims=True) - projImg2
+    projViewer = displaySequence(np.log(projImg2))
 
-projViewer = displaySequence(np.log(projImg2))
+
+if __name__ == "__main__":
+    main()
