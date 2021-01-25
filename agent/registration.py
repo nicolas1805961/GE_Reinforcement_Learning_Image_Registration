@@ -16,9 +16,11 @@ from utils import get_new_image, rotate_image, visualize_registration
 class RegistrationAgent:
     actions = Action.values()
 
-    def __init__(self, depth, height, width, device):
+    def __init__(self, size, big_size, device):
         self.visualize_registration = False
-        self.dqn = DQN(depth, height, width, outputs=len(self.actions), device=device)
+        self.dqn = DQN(1, size, size, outputs=len(self.actions), device=device)
+        self.size = size
+        self.big_size = big_size
 
     def evaluate(self, generator):
         assert(generator.batch_size == 1)
@@ -87,7 +89,7 @@ class RegistrationAgent:
                     if torch.max(center + translation) + 75 == 511 or torch.min(center + translation) - 75 == 0:
                         break
 
-                    current_image = get_new_image(full_image, T_t, (center[0, 0].item(), center[0, 1].item()))
+                    current_image = get_new_image(full_image, T_t, (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size)
 
                 T_ts[i] = T_t
 

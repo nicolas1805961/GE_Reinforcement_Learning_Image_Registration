@@ -9,9 +9,11 @@ def rotate_image(image, angle, image_center):
     result = cv2.warpAffine(image, rot_mat, image.shape[::-1])
     return result
 
-def get_new_image(big_image_rotated, transform, center):
+def get_new_image(big_image_rotated, transform, center, size, big_size):
     big_image_before = rotate_image(big_image_rotated, transform[0], center)
-    patch2_test = big_image_before[center[0] - 75 + transform[2]:center[0] + 75 + transform[2], center[1] - 75 + transform[1]:center[1] + 75 + transform[1]]
+    patch2_test = big_image_before[center[0] - (big_size//2) + transform[2]:center[0] + (big_size//2) + transform[2], center[1] - (big_size//2) + transform[1]:center[1] + (big_size//2) + transform[1]]
+    if size != big_size:
+        patch2_test = cv2.resize(patch2_test, (size, size), interpolation=cv2.INTER_CUBIC)
     return patch2_test
 
 
