@@ -88,10 +88,11 @@ class RegistrationAgent:
 
                     if torch.unique(T_t[:iteration + 2], dim=0).size(0) == torch.unique(T_t[:iteration + 1], dim=0).size(0):
                         if torch.sum(q_values[iteration + 1]) > torch.sum(q_values[iteration]):
-                            T_ts[i] = T_t[iterations]
+                            T_ts[i] = T_t[iteration]
                             T_t[iteration + 1, :] = torch.zeros((1, 3), dtype=torch.int16)
                         else:
-                            T_ts[i] = T_t[iterations + 1]
+                            T_ts[i] = T_t[iteration + 1]
+                            iteration += 1
                         break
 
                     if np.max(center.numpy().reshape(1, 2) + T_t[iteration + 1, 1:].numpy().reshape(1, 2)[:, ::-1]) + (self.big_size//2) > 511 or np.min(center.numpy().reshape(1, 2) + T_t[iteration + 1, 1:].numpy().reshape(1, 2)[:, ::-1]) - (self.big_size//2) < 0:
@@ -99,12 +100,12 @@ class RegistrationAgent:
 
                     current_image = get_new_image(full_image, T_t[iteration + 1], (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size)
 
-                if iteration == iterations - 2:
-                    T_ts[i] = T_t[iterations + 1]
+                if iteration == iterations - 1:
+                    T_ts[i] = T_t[iteration + 1]
 
                 if self.visualize_registration:
                     visualization_reference_image = torch.squeeze(reference_image).numpy()
-                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item())) for transformation in T_t]
+                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item())) for transformation in T_t[:iteration + 1]]
 
                     max_step = len(visualization_floating_images) - 1
                     step = widgets.IntSlider(value=0, min=0, max=max_step, step=1, description='Registration step')
