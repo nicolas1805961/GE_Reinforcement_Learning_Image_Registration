@@ -53,8 +53,8 @@ class RegistrationAgent:
 
         return accuracy, rotation_distance, translation_distance, mean_rotation_distance, mean_translation_distance
 
-    def fit(self, generator, epochs):
-        self.dqn.fit(generator, epochs=epochs)
+    def fit(self, training_generator, validation_generator=None, epochs=1):
+        self.dqn.fit(training_generator, validation_generator=validation_generator, epochs=epochs)
 
         return self
 

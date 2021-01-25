@@ -80,7 +80,7 @@ class DQN(nn.Module):
         x = F.relu(self.head3(x))
         return self.head4(x)
 
-    def fit(self, generator, optimizer=torch.optim.Adam, criterion=nn.MSELoss(), epochs=1):
+    def fit(self, training_generator, validation_generator=None, optimizer=torch.optim.Adam, criterion=nn.MSELoss(), epochs=1):
         optimizer = optimizer(self.parameters())
 
         running_loss = 0.0
@@ -89,8 +89,9 @@ class DQN(nn.Module):
 
             index = 0
             acc, choice = 0.0, 0.0
+            val_acc, val_choice = 0.0, 0.0
 
-            for index, (reference_images, floating_images, qvalues) in enumerate(generator):
+            for index, (reference_images, floating_images, qvalues) in enumerate(training_generator):
                 diff_images = (reference_images - floating_images).float().to(self.device)
                 qvalues = qvalues.to(self.device)
 
@@ -107,7 +108,21 @@ class DQN(nn.Module):
 
             acc, choice = acc / (index + 1), choice / (index + 1)
             loss = running_loss / ((index + 1) * (epoch + 1))
-            print(f'Epoch {epoch + 1}: loss {loss} accuracy {acc} choice {choice}')
+
+            with torch.no_grad():
+
+                for index, (reference_images, floating_images, qvalues) in enumerate(validation_generator):
+                    diff_images = (reference_images - floating_images).float().to(self.device)
+                    qvalues = qvalues.to(self.device)
+
+                    predictions = self.__call__(diff_images).to(self.device)
+
+                    val_acc += accuracy(qvalues, predictions)
+                    val_choice += choicem(qvalues, predictions)
+
+            val_acc, val_choice = val_acc / (index + 1), val_choice / (index + 1)
+
+            print(f'Epoch {epoch + 1}: loss {loss} accuracy {acc} choice {choice} val_accuracy {val_acc} val_choice {val_choice}')
 
     def predict(self, x):
         return self.__call__(x.view(1, *self.input_size).float().to(self.device))
