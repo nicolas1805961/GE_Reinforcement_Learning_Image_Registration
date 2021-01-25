@@ -21,7 +21,7 @@ class Action(Enum):
     LEFT                 = (auto(), np.array([ 0,-1, 0]))
     UP                   = (auto(), np.array([ 0, 0,-1]))
 
-    def __init__(self, value, transform, rotation=10, translation=1):
+    def __init__(self, value, transform, rotation=1, translation=1):
         self.transform = torch.from_numpy(transform)
         self.transform[0] *= rotation
         self.transform[1] *= translation
