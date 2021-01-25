@@ -93,11 +93,11 @@ class RegistrationAgent:
                             iteration += 1
                         break
 
-                    if np.max(center.numpy().reshape(1, 2) + T_t[iteration + 1, 1:].numpy().reshape(1, 2)[:, ::-1]) + (self.big_size//2) > 511 or np.min(center.numpy().reshape(1, 2) + T_t[iteration + 1, 1:].numpy().reshape(1, 2)[:, ::-1]) - (self.big_size//2) < 0:
+                    current_image = get_new_image(full_image, T_t[iteration + 1], (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size)
+                    
+                    if current_image is None:
                         T_ts[i] = T_t[iteration]
                         break
-
-                    current_image = get_new_image(full_image, T_t[iteration + 1], (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size)
 
                 if iteration == iterations - 1:
                     T_ts[i] = T_t[iteration + 1]
