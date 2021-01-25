@@ -45,7 +45,7 @@ class RegistrationAgent:
             transformation = torch.squeeze(transformation).numpy()
             T_t = np.squeeze(T_t)
 
-            accuracy += np.array_equal(transformation, T_t)
+            accuracy += np.linalg.norm(T_t - transformation) <= np.linalg.norm(transformation) / 4
             rotation_distance += np.abs(transformation[0] - T_t[0])
             translation_distance += np.abs(transformation[1:] - T_t[1:]).sum()
 
@@ -60,7 +60,7 @@ class RegistrationAgent:
 
         return self
 
-    def register(self, generator, iterations=64):
+    def register(self, generator, iterations=200):
         assert(generator.batch_size == 1)
 
         samples = len(generator.dataset)
@@ -69,33 +69,42 @@ class RegistrationAgent:
         with torch.no_grad():
 
             for i, (reference_image, floating_image, full_image, center) in enumerate(generator):
-                T_t = torch.zeros((3,), dtype=torch.int32)
-                visualization_transformations = [T_t.numpy()]
+                T_t = torch.zeros((iterations, 3), dtype=torch.int32)
+                q_values = torch.zeros((iterations, 6), dtype=torch.float32)
+                #visualization_transformations = [T_t.numpy()]
 
                 full_image = torch.squeeze(full_image).numpy()
                 current_image = floating_image
 
-                for iteration in range(iterations):
+                for iteration in range(iterations - 1):
                     diff_image = reference_image - current_image
 
                     prediction = self.dqn.predict(diff_image)
                     action = self.actions[torch.argmax(prediction, dim=1)]
 
-                    T_t = action.apply(T_t)
-                    visualization_transformations.append(T_t)
+                    T_t[iteration + 1] = action.apply(T_t[iteration])
+                    q_values[iteration + 1] = prediction
+                    #visualization_transformations.append(T_t)
 
-                    inv_idx = torch.arange(1, -1, -1).long()
-                    translation = torch.index_select(T_t[1:], 0, inv_idx).reshape(1, 2)
-                    if torch.max(center + translation) + 75 == 511 or torch.min(center + translation) - 75 == 0:
+                    if torch.unique(T_t[:iteration + 2], dim=0).size(0) == torch.unique(T_t[:iteration + 1], dim=0).size(0):
+                        if torch.sum(q_values[iteration + 1]) > torch.sum(q_values[iteration]):
+                            T_ts[i] = T_t[iterations]
+                            T_t[iteration + 1, :] = torch.zeros((1, 3), dtype=torch.int16)
+                        else:
+                            T_ts[i] = T_t[iterations + 1]
                         break
 
-                    current_image = get_new_image(full_image, T_t, (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size)
+                    if np.max(center.numpy().reshape(1, 2) + T_t[iteration + 1, 1:].numpy().reshape(1, 2)[:, ::-1]) + (self.big_size//2) > 511 or np.min(center.numpy().reshape(1, 2) + T_t[iteration + 1, 1:].numpy().reshape(1, 2)[:, ::-1]) - (self.big_size//2) < 0:
+                        break
 
-                T_ts[i] = T_t
+                    current_image = get_new_image(full_image, T_t[iteration + 1], (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size)
+
+                if iteration == iterations - 2:
+                    T_ts[i] = T_t[iterations + 1]
 
                 if self.visualize_registration:
                     visualization_reference_image = torch.squeeze(reference_image).numpy()
-                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item())) for transformation in visualization_transformations]
+                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item())) for transformation in T_t]
 
                     max_step = len(visualization_floating_images) - 1
                     step = widgets.IntSlider(value=0, min=0, max=max_step, step=1, description='Registration step')
