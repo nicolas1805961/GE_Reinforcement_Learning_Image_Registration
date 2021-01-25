@@ -71,7 +71,6 @@ class RegistrationAgent:
             for i, (reference_image, floating_image, full_image, center) in enumerate(generator):
                 T_t = torch.zeros((iterations, 3), dtype=torch.int32)
                 q_values = torch.zeros((iterations, 6), dtype=torch.float32)
-                #visualization_transformations = [T_t.numpy()]
 
                 full_image = torch.squeeze(full_image).numpy()
                 current_image = floating_image
@@ -84,7 +83,6 @@ class RegistrationAgent:
 
                     T_t[iteration + 1] = action.apply(T_t[iteration])
                     q_values[iteration + 1] = prediction
-                    #visualization_transformations.append(T_t)
 
                     if torch.unique(T_t[:iteration + 2], dim=0).size(0) == torch.unique(T_t[:iteration + 1], dim=0).size(0):
                         if torch.sum(q_values[iteration + 1]) > torch.sum(q_values[iteration]):
@@ -96,6 +94,7 @@ class RegistrationAgent:
                         break
 
                     if np.max(center.numpy().reshape(1, 2) + T_t[iteration + 1, 1:].numpy().reshape(1, 2)[:, ::-1]) + (self.big_size//2) > 511 or np.min(center.numpy().reshape(1, 2) + T_t[iteration + 1, 1:].numpy().reshape(1, 2)[:, ::-1]) - (self.big_size//2) < 0:
+                        T_ts[i] = T_t[iteration]
                         break
 
                     current_image = get_new_image(full_image, T_t[iteration + 1], (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size)
@@ -105,7 +104,7 @@ class RegistrationAgent:
 
                 if self.visualize_registration:
                     visualization_reference_image = torch.squeeze(reference_image).numpy()
-                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item())) for transformation in T_t[:iteration + 1]]
+                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size) for transformation in T_t[:iteration + 1]]
 
                     max_step = len(visualization_floating_images) - 1
                     step = widgets.IntSlider(value=0, min=0, max=max_step, step=1, description='Registration step')
