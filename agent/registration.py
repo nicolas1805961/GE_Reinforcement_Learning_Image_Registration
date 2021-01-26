@@ -3,6 +3,8 @@ import torch
 import ipywidgets as widgets
 import numpy as np
 import tensorflow as tf
+import pickle
+import os
 
 from IPython.display import display
 from ipywidgets import interact, interactive, fixed
@@ -67,15 +69,19 @@ class RegistrationAgent:
 
         return self
 
-    def register(self, generator, iterations=200):
+    def register(self, generator, iterations=200, path=None):
         assert(generator.batch_size == 1)
 
         samples = len(generator.dataset)
         T_ts = np.zeros((samples, 3), dtype=np.int32)
+        list_of_reference_images = []
+        list_of_floating_images = []
 
         with torch.no_grad():
 
             for i, (reference_image, floating_image, full_image, center) in enumerate(generator):
+                list_of_frames = []
+                list_of_reference_images.append(torch.squeeze(reference_image).numpy())
                 T_t = torch.zeros((iterations, 3), dtype=torch.int32)
                 q_values = torch.zeros((iterations, 6), dtype=torch.float32)
 
@@ -100,6 +106,9 @@ class RegistrationAgent:
                     
                     if current_image is None:
                         break
+                    list_of_frames.append(current_image)
+                
+                list_of_floating_images.append(np.stack(list_of_frames))
                     
                 mask = T_t.eq(torch.zeros((iterations, 3))).all(dim=1)
                 T_t = T_t[~mask]
@@ -109,23 +118,20 @@ class RegistrationAgent:
                     visualization_reference_image = torch.squeeze(reference_image).numpy()
                     visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size) for transformation in T_t]
 
-                    fig, ax = plt.subplots(1, 2, figsize=(20, 8))
-                    plt.close()
-                    ims = [[ax[0].imshow(visualization_reference_image, cmap='gray', animated=True), ax[1].imshow(current_image, cmap='gray', animated=True)] for current_image in visualization_floating_images]
-                    anim = animation.ArtistAnimation(fig, ims, interval=200, repeat=False, blit=True)
+                    max_step = len(visualization_floating_images) - 1
+                    step = widgets.IntSlider(value=0, min=0, max=max_step, tep=1, description='Registration step')
+                    interact(
+                        visualize_registration,
+                        reference_image=fixed(visualization_reference_image),
+                        floating_images=fixed(visualization_floating_images),
+                        step=step
+                    )
 
-                    # Note: below is the part which makes it work on Colab
-                    rc('animation', html='jshtml')
-                    anim
+        with open(os.path.join(path, "reference_images.txt"), "wb") as fp:
+            pickle.dump(list_of_reference_images, fp)
 
-                    #max_step = len(visualization_floating_images) - 1
-                    #step = widgets.IntSlider(value=0, min=0, max=max_step, step=1, description='Registration step')
-                    #interact(
-                    #    visualize_registration,
-                    #    reference_image=fixed(visualization_reference_image),
-                    #    floating_images=fixed(visualization_floating_images),
-                    #    step=step
-                    #)
+        with open(os.path.join(path, "floating_images.txt"), "wb") as fp:
+            pickle.dump(list_of_floating_images, fp)
 
         return T_ts
 
