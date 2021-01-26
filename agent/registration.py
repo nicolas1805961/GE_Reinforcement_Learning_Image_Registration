@@ -6,6 +6,8 @@ import numpy as np
 from IPython.display import display
 from ipywidgets import interact, interactive, fixed
 
+from matplotlib import animation, rc
+import matplotlib.pyplot as plt
 
 from datasets.dataset import DQNDataLoader, RegisterDQNDataset
 from deepqnet.deepqnet import DQN
@@ -102,14 +104,23 @@ class RegistrationAgent:
                     visualization_reference_image = torch.squeeze(reference_image).numpy()
                     visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size) for transformation in T_t]
 
-                    max_step = len(visualization_floating_images) - 1
-                    step = widgets.IntSlider(value=0, min=0, max=max_step, step=1, description='Registration step')
-                    interact(
-                        visualize_registration,
-                        reference_image=fixed(visualization_reference_image),
-                        floating_images=fixed(visualization_floating_images),
-                        step=step
-                    )
+                    fig, ax = plt.subplots(1, 2, figsize=(20, 8))
+                    plt.close()
+                    ims = [[ax[0].imshow(visualization_reference_image, cmap='gray', animated=True), ax[1].imshow(current_image, cmap='gray', animated=True)] for current_image in visualization_floating_images]
+                    anim = animation.ArtistAnimation(fig, ims, interval=200, repeat=False, blit=True)
+
+                    # Note: below is the part which makes it work on Colab
+                    rc('animation', html='jshtml')
+                    anim
+
+                    #max_step = len(visualization_floating_images) - 1
+                    #step = widgets.IntSlider(value=0, min=0, max=max_step, step=1, description='Registration step')
+                    #interact(
+                    #    visualize_registration,
+                    #    reference_image=fixed(visualization_reference_image),
+                    #    floating_images=fixed(visualization_floating_images),
+                    #    step=step
+                    #)
 
         return T_ts
 
