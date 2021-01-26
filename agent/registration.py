@@ -86,25 +86,21 @@ class RegistrationAgent:
 
                     if torch.unique(T_t[:iteration + 2], dim=0).size(0) == torch.unique(T_t[:iteration + 1], dim=0).size(0):
                         if torch.sum(q_values[iteration + 1]) > torch.sum(q_values[iteration]):
-                            T_ts[i] = T_t[iteration]
                             T_t[iteration + 1, :] = torch.zeros((1, 3), dtype=torch.int16)
-                        else:
-                            T_ts[i] = T_t[iteration + 1]
-                            iteration += 1
                         break
 
                     current_image = get_new_image(full_image, T_t[iteration + 1], (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size)
                     
                     if current_image is None:
-                        T_ts[i] = T_t[iteration]
                         break
-
-                if iteration == iterations - 1:
-                    T_ts[i] = T_t[iteration + 1]
+                    
+                mask = T_t.eq(torch.zeros((iterations, 3))).all(dim=1)
+                T_t = T_t[~mask]
+                T_ts[i] = T_t[-1]
 
                 if self.visualize_registration:
                     visualization_reference_image = torch.squeeze(reference_image).numpy()
-                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size) for transformation in T_t[:iteration + 1]]
+                    visualization_floating_images = [get_new_image(full_image, transformation, (center[0, 0].item(), center[0, 1].item()), self.size, self.big_size) for transformation in T_t]
 
                     max_step = len(visualization_floating_images) - 1
                     step = widgets.IntSlider(value=0, min=0, max=max_step, step=1, description='Registration step')
