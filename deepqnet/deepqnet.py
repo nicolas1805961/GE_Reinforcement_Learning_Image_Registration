@@ -109,6 +109,10 @@ class DQN(nn.Module):
             acc, choice = acc / (index + 1), choice / (index + 1)
             loss = running_loss / ((index + 1) * (epoch + 1))
 
+            if validation_generator is None:
+                print(f'Epoch {epoch + 1}: loss {loss} accuracy {acc} choice {choice}')
+                continue
+
             with torch.no_grad():
 
                 for index, (reference_images, floating_images, qvalues) in enumerate(validation_generator):
