@@ -2,6 +2,7 @@ import torch
 
 import ipywidgets as widgets
 import numpy as np
+import tensorflow as tf
 
 from IPython.display import display
 from ipywidgets import interact, interactive, fixed
@@ -34,6 +35,8 @@ class RegistrationAgent:
         rotation_distance = 0.0
         translation_distance = 0.0
 
+        progbar = tf.keras.utils.Progbar(samples, verbose=1, interval=0.05, unit_name='registration')
+
         for i, (reference_image, floating_image, full_image, center, transformation) in enumerate(generator):
             reference_image = torch.squeeze(reference_image, dim=1)
             floating_image = torch.squeeze(floating_image, dim=1)
@@ -50,6 +53,8 @@ class RegistrationAgent:
             accuracy += np.linalg.norm(T_t - transformation) <= np.linalg.norm(transformation) / 4
             rotation_distance += np.abs(transformation[0] - T_t[0])
             translation_distance += np.abs(transformation[1:] - T_t[1:]).sum()
+
+            progbar.update(i + 1)
 
         accuracy /= samples
         mean_rotation_distance = rotation_distance / samples
