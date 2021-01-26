@@ -126,12 +126,12 @@ class RegistrationAgent:
                         floating_images=fixed(visualization_floating_images),
                         step=step
                     )
+        if path is not None:
+            with open(os.path.join(path, "reference_images.txt"), "wb") as fp:
+                pickle.dump(list_of_reference_images, fp)
 
-        with open(os.path.join(path, "reference_images.txt"), "wb") as fp:
-            pickle.dump(list_of_reference_images, fp)
-
-        with open(os.path.join(path, "floating_images.txt"), "wb") as fp:
-            pickle.dump(list_of_floating_images, fp)
+            with open(os.path.join(path, "floating_images.txt"), "wb") as fp:
+                pickle.dump(list_of_floating_images, fp)
 
         return T_ts
 
